@@ -7,7 +7,10 @@ static int	init_heap(t_table *table)
 	n = table->config.nb_coders;
 	table->heap.nodes = malloc(sizeof(t_heap_node) * n);
 	if (!table->heap.nodes)
+	{
+		printf("something here");
 		return (1);
+	}
 	table->heap.size = 0;
 	table->heap.capacity = n;
 	table->heap.next_seq = 0;
@@ -22,7 +25,10 @@ static int	init_coders(t_table *table)
 	n = table->config.nb_coders;
 	table->coders = malloc(sizeof(t_coder) * n);
 	if (!table->coders)
+	{
+		printf("something here");
 		return (1);
+	}
 	i = 0;
 	while (i < n)
 	{
