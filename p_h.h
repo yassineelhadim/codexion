@@ -108,5 +108,9 @@ int			heap_is_empty(t_heap *heap);
 void		heap_push(t_heap *heap, t_sched scheduler, t_heap_node new_node);
 void		heap_pop_min(t_heap *heap, t_sched scheduler);
 int			init_dongles(t_table *table);
+int			ft_parse_digits(const char **s, long *result);
+int			ft_is_digit(char c);
+void		ft_skip_spaces(const char **s);
+int			ft_parse_sign(const char **s);
 
 #endif

@@ -1,11 +1,6 @@
 #include <string.h>
 #include "p_h.h"
 
-static int	ft_is_digit(char c)
-{
-	return (c >= '0' && c <= '9');
-}
-
 /*
 ** Strict decimal parser: rejects empty strings, non-digit chars
 ** (including '-', '+', '.', whitespace), and overflow past INT_MAX.
@@ -19,16 +14,16 @@ static int	ft_strict_parse_long(const char *s, long *out)
 
 	if (!s || !*s)
 		return (-1);
+	ft_skip_spaces(&s);
+	if (ft_parse_sign(&s))
+		return (-1);
+	if (!ft_is_digit(*s))
+		return (-1);
 	result = 0;
-	while (*s)
-	{
-		if (!ft_is_digit(*s))
-			return (-1);
-		result = result * 10 + (*s - '0');
-		if (result > INT_MAX)
-			return (-1);
-		s++;
-	}
+	if (ft_parse_digits(&s, &result) == -1)
+		return (-1);
+	if (*s)
+		return (-1);
 	*out = result;
 	return (0);
 }

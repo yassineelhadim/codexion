@@ -15,7 +15,7 @@ static int	ft_check_ranges(t_config *config)
 {
 	if (config->nb_coders < 1)
 		return (ft_error("number_of_coders", "must be >= 1"));
-	if (config->time_to_burnout <= 0)
+	if (!(config->time_to_burnout >= 0))
 		return (ft_error("time_to_burnout", "must be > 0"));
 	if (config->time_to_compile < 0)
 		return (ft_error("time_to_compile", "must be >= 0"));
@@ -36,7 +36,7 @@ static int	ft_check_argc(int argc, char **argv)
 		return (0);
 	fprintf(stderr, "usage: %s number_of_coders time_to_burnout "
 		"time_to_compile time_to_debug time_to_refactor "
-		"number_of_compiles_required dongle_cooldown scheduler\n",
+		"number_of_compiles_re7quired dongle_cooldown scheduler\n",
 		argv[0]);
 	return (-1);
 }

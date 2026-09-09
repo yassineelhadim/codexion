@@ -1,4 +1,5 @@
 #include "p_h.h"
+#include <stdbool.h>
 
 static bool dongle_available(long long cooldown, int helder, t_dongle *dg)
 {
@@ -27,9 +28,16 @@ void    take_dongle(t_table *table, int dg_id, int coder_id)
         pthread_mutex_unlock(&table->mutex);
         return ;
     }
-    if (dongle_available(cooldown, table->dongle[dg_id].helder , table->dongles[dg_id]))
-    table->dongles[dg_id].availability = 0;
-    table->dongles[dg_id].helder = coder_id;
+    if (dongle_available(cooldown, table->dongles[dg_id].helder , &table->dongles[dg_id]))
+    {
+        table->dongles[dg_id].availability = 0;
+        table->dongles[dg_id].helder = coder_id;
+    }
+    else
+    {
+        pthread_mutex_unlock(&table->mutex);
+        return ;
+    }
     pthread_mutex_unlock(&table->mutex);
     log_locked(table, coder_id, "has taken a dongle");
 }
