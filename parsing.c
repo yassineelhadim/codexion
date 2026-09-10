@@ -1,22 +1,11 @@
 #include "p_h.h"
 
-/*
-** Range checks, applied after the strict numeric parse succeeds.
-** Decisions worth knowing about (spec doesn't pin these down):
-**  - number_of_coders must be >= 1.
-**  - time_to_burnout must be > 0 (0 would mean instant burnout for
-**    everyone, which we treat as a reject rather than a trivial run).
-**  - time_to_compile / time_to_debug / time_to_refactor may be 0
-**    (an instant phase transition is legal).
-**  - number_of_compiles_required must be >= 1.
-**  - dongle_cooldown may be 0 (no cooldown).
-*/
 static int	ft_check_ranges(t_config *config)
 {
 	if (config->nb_coders < 1)
 		return (ft_error("number_of_coders", "must be >= 1"));
-	if (!(config->time_to_burnout >= 0))
-		return (ft_error("time_to_burnout", "must be > 0"));
+	if (!(config->time_to_burnout < 0))
+		return (ft_error("time_to_burnout", "must be >= 0"));
 	if (config->time_to_compile < 0)
 		return (ft_error("time_to_compile", "must be >= 0"));
 	if (config->time_to_debug < 0)

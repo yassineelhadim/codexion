@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   c_monitor.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/09/10 20:29:19 by yel-hadi          #+#    #+#             */
+/*   Updated: 2026/09/10 20:30:46 by yel-hadi         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "p_h.h"
 #include <unistd.h>
 
@@ -39,7 +51,7 @@ static int  check_all_done(t_table *table)
     done = 0;
     // I need to calculate done
     // if done equals the nb of coders it means
-    // that all the coders have finished their job
+    // that all the coders have finished their job.
     while (i < table->config.nb_coders)
     {
         if (table->coders[i].nb_compiles
