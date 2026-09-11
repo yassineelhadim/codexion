@@ -1,21 +1,46 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    Makefile                                           :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: yel-hadi <marvin@42.fr>                     +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2026/09/11 by yel-hadi                   #+#    #+#              #
+#    Updated: 2026/09/11 by yel-hadi                  ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
 NAME = codexion
-CC = gcc
+
+CC = cc
 CFLAGS = -Wall -Wextra -Werror -pthread
-SRCS = main.c parsing.c parsing_utils.c c_monitor.c \
-coder_routine.c create_init.c launch.c mon_help.c \
-routine_help.c init_dongles.c par_utils_help.c
-OBJS = $(SRCS:.c=.o)
+
+SRC = main.c \
+		parsing.c \
+		parsing_utils.c \
+		scheduler.c \
+		heap_ops.c \
+		sim_setup.c \
+		sim_launch.c \
+		dongle_ops.c \
+		dongle_grants.c \
+		dongle_release.c \
+		coder.c \
+		coder_utils.c \
+		monitor.c
+
+OBJ = $(SRC:.c=.o)
 
 all: $(NAME)
 
-$(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
+$(NAME): $(OBJ)
+	$(CC) $(CFLAGS) $(OBJ) -o $(NAME)
 
-%.o: %.c parsing.h
+%.o: %.c codexion.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(OBJ)
 
 fclean: clean
 	rm -f $(NAME)

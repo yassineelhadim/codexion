@@ -1,68 +1,69 @@
-#include "p_h.h"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   scheduler.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/09/11 00:00:00 by yel-hadi       #+#    #+#             */
+/*   Updated: 2026/09/11 00:00:00 by yel-hadi      ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-void	heap_push(t_heap *heap, t_sched scheduler, t_heap_node new_node)
+#include "codexion.h"
+
+/*
+** Priority rule for the per-dongle min-heaps:
+**   - fifo: the request that arrived first wins;
+**   - edf:  the earliest burnout deadline wins, ties broken by arrival
+**           order so the policy stays fully deterministic.
+** The scheduler chosen on the command line is passed to every heap
+** operation, so a run behaves consistently under one policy only.
+** A heap entry survives until its request is granted: a coder skipped
+** because the dongle was cooling down keeps its queue spot (no starvation).
+*/
+
+int	request_wins(t_scheduler sched, const t_request *a, const t_request *b)
 {
-	int			i;
-	int			parent;
-	t_heap_node	tmp;
+	if (sched == SCHEDULER_FIFO)
+		return (a->arrival_seq < b->arrival_seq);
+	if (a->deadline != b->deadline)
+		return (a->deadline < b->deadline);
+	return (a->arrival_seq < b->arrival_seq);
+}
 
-	heap->nodes[heap->size] = new_node;
-	i = heap->size;
+void	swap_requests(t_request *a, t_request *b)
+{
+	t_request	tmp;
+
+	tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
+/* Insert at the bottom, then sift up until the heap order is restored. */
+void	heap_push(t_heap *heap, t_scheduler sched, const t_request *request)
+{
+	int	child;
+	int	parent;
+
+	child = heap->size;
+	heap->items[child] = *request;
 	heap->size++;
-	while (i > 0)
+	while (child > 0)
 	{
-		parent = (i - 1) / 2;
-		if (heap_has_priority(scheduler, &heap->nodes[i], &heap->nodes[parent]))
-		{
-			tmp = heap->nodes[i];
-			heap->nodes[i] = heap->nodes[parent];
-			heap->nodes[parent] = tmp;
-			i = parent;
-		}
-		else
+		parent = (child - 1) / 2;
+		if (!request_wins(sched, &heap->items[child], &heap->items[parent]))
 			break ;
+		swap_requests(&heap->items[child], &heap->items[parent]);
+		child = parent;
 	}
 }
 
-static int	heap_smallest_child(t_heap *heap, t_sched scheduler, int i)
+/* True if coder_id currently owns the highest-priority slot of this queue. */
+int	heap_top_is(const t_heap *heap, int coder_id)
 {
-	int	left;
-	int	right;
-	int	smallest;
-
-	left = i * 2 + 1;
-	right = i * 2 + 2;
-	smallest = i;
-	if (left < heap->size && heap_has_priority(scheduler,
-			&heap->nodes[left], &heap->nodes[smallest]))
-		smallest = left;
-	if (right < heap->size && heap_has_priority(scheduler,
-			&heap->nodes[right], &heap->nodes[smallest]))
-		smallest = right;
-	return (smallest);
-}
-
-void	heap_pop_min(t_heap *heap, t_sched scheduler)
-{
-	int			i;
-	int			smallest;
-	t_heap_node	tmp;
-
 	if (heap->size == 0)
-		return ;
-	heap->size--;
-	if (heap->size == 0)
-		return ;
-	heap->nodes[0] = heap->nodes[heap->size];
-	i = 0;
-	while (1)
-	{
-		smallest = heap_smallest_child(heap, scheduler, i);
-		if (smallest == i)
-			break ;
-		tmp = heap->nodes[i];
-		heap->nodes[i] = heap->nodes[smallest];
-		heap->nodes[smallest] = tmp;
-		i = smallest;
-	}
+		return (0);
+	return (heap->items[0].coder_id == coder_id);
 }

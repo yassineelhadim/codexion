@@ -1,57 +1,75 @@
-#include <string.h>
-#include "p_h.h"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   parsing_utils.c                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/09/11 00:00:00 by yel-hadi       #+#    #+#             */
+/*   Updated: 2026/09/11 00:00:00 by yel-hadi      ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "codexion.h"
 
 /*
-** Strict decimal parser: rejects empty strings, non-digit chars
-** (including '-', '+', '.', whitespace), and overflow past INT_MAX.
-** Refusing atoi()/strtol() on purpose: atoi() gives silent garbage
-** on bad input, and we want a hard overflow guard before the value
-** ever gets multiplied into a timespec later on.
+** Strict decimal parser: rejects signs, spaces, non-digit characters,
+** empty strings and overflow, unlike atoi() which silently accepts garbage.
+** Values are capped at INT_MAX because every numeric field is stored as an
+** int or used as a millisecond duration well below that bound.
 */
-static int	ft_strict_parse_long(const char *s, long *out)
-{
-	long	result;
 
-	if (!s || !*s)
-		return (-1);
-	ft_skip_spaces(&s);
-	if (ft_parse_sign(&s))
-		return (-1);
-	if (!ft_is_digit(*s))
-		return (-1);
-	result = 0;
-	if (ft_parse_digits(&s, &result) == -1)
-		return (-1);
-	if (*s)
-		return (-1);
-	*out = result;
+static int	parse_decimal_long(const char *str, long *out)
+{
+	long	value;
+
+	if (str == NULL || *str == '\0')
+		return (1);
+	value = 0;
+	while (*str != '\0')
+	{
+		if (*str < '0' || *str > '9')
+			return (1);
+		if (value > (INT_MAX - (*str - '0')) / 10)
+			return (1);
+		value = value * 10 + (*str - '0');
+		str++;
+	}
+	*out = value;
 	return (0);
 }
 
-int	ft_parse_scheduler(const char *s, t_sched *scheduler)
+/* Counts need at least one unit: one coder, one required compile. */
+int	parse_positive_long(const char *str, long *out)
 {
-	if (strcmp(s, "fifo") == 0)
-	{
-		*scheduler = SCHED_TYPE_FIFO;
-		return (0);
-	}
-	if (strcmp(s, "edf") == 0)
-	{
-		*scheduler = SCHED_TYPE_EDF;
-		return (0);
-	}
-	return (-1);
-}
-
-int	ft_error(const char *field, const char *reason)
-{
-	fprintf(stderr, "codexion: invalid %s: %s\n", field, reason);
-	return (-1);
-}
-
-int	ft_parse_field(const char *arg, const char *name, long *out)
-{
-	if (ft_strict_parse_long(arg, out) == -1)
-		return (ft_error(name, "must be a non-negative integer"));
+	if (parse_decimal_long(str, out) != 0 || *out < 1)
+		return (1);
 	return (0);
+}
+
+/* Durations in milliseconds may legitimately be zero. */
+int	parse_non_negative_long(const char *str, long *out)
+{
+	if (parse_decimal_long(str, out) != 0)
+		return (1);
+	return (0);
+}
+
+int	parse_scheduler(const char *str, t_scheduler *out)
+{
+	if (strcmp(str, "fifo") == 0)
+		*out = SCHEDULER_FIFO;
+	else if (strcmp(str, "edf") == 0)
+		*out = SCHEDULER_EDF;
+	else
+		return (1);
+	return (0);
+}
+
+void	print_usage(const char *prog)
+{
+	fprintf(stderr,
+		"usage: %s number_of_coders time_to_burnout time_to_compile "
+		"time_to_debug time_to_refactor number_of_compiles_required "
+		"dongle_cooldown scheduler(fifo|edf)\n", prog);
 }

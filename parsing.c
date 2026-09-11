@@ -1,79 +1,91 @@
-#include "p_h.h"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   parsing.c                                          :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/09/11 00:00:00 by yel-hadi       #+#    #+#             */
+/*   Updated: 2026/09/11 00:00:00 by yel-hadi      ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-static int	ft_check_ranges(t_config *config)
+#include "codexion.h"
+
+/*
+** All 8 arguments are mandatory and must be strictly positive
+** (time_to_burnout included: a coder that could never start a compile
+** would burn out instantly, so 0 is not a useful value either).
+** The scheduler string must be exactly "fifo" or "edf".
+*/
+
+static int	field_is_invalid(const char *arg, const char *name, long *out,
+		int must_be_positive)
 {
-	if (config->nb_coders < 1)
-		return (ft_error("number_of_coders", "must be >= 1"));
-	if (config->time_to_burnout < 0)
-		return (ft_error("time_to_burnout", "must be >= 0"));
-	if (config->time_to_compile < 0)
-		return (ft_error("time_to_compile", "must be >= 0"));
-	if (config->time_to_debug < 0)
-		return (ft_error("time_to_debug", "must be >= 0"));
-	if (config->time_to_refactor < 0)
-		return (ft_error("time_to_refactor", "must be >= 0"));
-	if (config->number_of_compiles_required < 1)
-		return (ft_error("number_of_compiles_required", "must be >= 1"));
-	if (config->dongle_cooldown < 0)
-		return (ft_error("dongle_cooldown", "must be >= 0"));
+	int			bad;
+	const char	*kind;
+
+	if (must_be_positive)
+		bad = parse_positive_long(arg, out);
+	else
+		bad = parse_non_negative_long(arg, out);
+	if (must_be_positive)
+		kind = "positive";
+	else
+		kind = "non-negative";
+	if (bad)
+	{
+		fprintf(stderr, "codexion: %s must be a %s integer, got \"%s\"\n",
+			name, kind, arg);
+		return (1);
+	}
 	return (0);
 }
 
-static int	ft_check_argc(int argc, char **argv)
+static int	parse_numbers(char **argv, t_config *config)
 {
-	if (argc == 9)
-		return (0);
-	fprintf(stderr, "usage: %s number_of_coders time_to_burnout "
-		"time_to_compile time_to_debug time_to_refactor "
-		"number_of_compiles_re7quired dongle_cooldown scheduler\n",
-		argv[0]);
-	return (-1);
-}
+	long	nb_coders;
+	long	compiles;
 
-static int	ft_parse_counts(char **argv, t_config *config)
-{
-	long	tmp;
-
-	if (ft_parse_field(argv[1], "nb_coders", &tmp) == -1)
-		return (-1);
-	config->nb_coders = (int)tmp;
-	if (ft_parse_field(argv[6], "number_of_compiles_required", &tmp) == -1)
-		return (-1);
-	config->number_of_compiles_required = (int)tmp;
+	if (field_is_invalid(argv[1], "number_of_coders", &nb_coders, 1))
+		return (1);
+	config->nb_coders = (int)nb_coders;
+	if (field_is_invalid(argv[2], "time_to_burnout",
+			&config->time_to_burnout, 0))
+		return (1);
+	if (field_is_invalid(argv[3], "time_to_compile",
+			&config->time_to_compile, 0))
+		return (1);
+	if (field_is_invalid(argv[4], "time_to_debug", &config->time_to_debug, 0))
+		return (1);
+	if (field_is_invalid(argv[5], "time_to_refactor",
+			&config->time_to_refactor, 0))
+		return (1);
+	if (field_is_invalid(argv[6], "number_of_compiles_required", &compiles, 1))
+		return (1);
+	config->nb_compiles_required = (int)compiles;
+	if (field_is_invalid(argv[7], "dongle_cooldown",
+			&config->dongle_cooldown, 0))
+		return (1);
 	return (0);
 }
 
-static int	ft_parse_durations(char **argv, t_config *config)
+int	parse_args(int argc, char **argv, t_config *config)
 {
-	if (ft_parse_field(argv[2], "time_to_burnout",
-			&config->time_to_burnout) == -1)
-		return (-1);
-	if (ft_parse_field(argv[3], "time_to_compile",
-			&config->time_to_compile) == -1)
-		return (-1);
-	if (ft_parse_field(argv[4], "time_to_debug",
-			&config->time_to_debug) == -1)
-		return (-1);
-	if (ft_parse_field(argv[5], "time_to_refactor",
-			&config->time_to_refactor) == -1)
-		return (-1);
-	if (ft_parse_field(argv[7], "dongle_cooldown",
-			&config->dongle_cooldown) == -1)
-		return (-1);
-	return (0);
-}
-
-int	ft_parser(int argc, char **argv, t_config *config)
-{
-	if (ft_check_argc(argc, argv) == -1)
-		return (-1);
-	if (ft_parse_counts(argv, config) == -1)
-		return (-1);
-	if (ft_parse_durations(argv, config) == -1)
-		return (-1);
-	if (ft_parse_scheduler(argv[8], &config->scheduler) == -1)
-		return (ft_error("scheduler", "must be exactly 'fifo' or 'edf'"));
-	if (ft_check_ranges(config) == -1)
-		return (-1);
+	memset(config, 0, sizeof(*config));
+	if (argc != 9)
+	{
+		fprintf(stderr, "codexion: expected 8 arguments, got %d\n", argc - 1);
+		print_usage(argv[0]);
+		return (1);
+	}
+	if (parse_numbers(argv, config) != 0)
+		return (1);
+	if (parse_scheduler(argv[8], &config->scheduler) != 0)
+	{
+		fprintf(stderr, "codexion: scheduler must be exactly \"fifo\" or "
+			"\"edf\", got \"%s\"\n", argv[8]);
+		return (1);
+	}
 	return (0);
 }
