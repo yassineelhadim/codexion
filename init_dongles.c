@@ -65,10 +65,7 @@ int	init_dongles(t_table *table)
 	n = table->config.nb_coders;
 	table->dongles = malloc(sizeof(t_dongle) * n);
 	if (!table->dongles)
-	{
-		printf("something here");
 		return (1);
-	}
 	i = 0;
 	while (i < n)
 	{

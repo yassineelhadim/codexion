@@ -48,7 +48,11 @@ void	heap_pop_min(t_heap *heap, t_sched scheduler)
 	int			smallest;
 	t_heap_node	tmp;
 
+	if (heap->size == 0)
+		return ;
 	heap->size--;
+	if (heap->size == 0)
+		return ;
 	heap->nodes[0] = heap->nodes[heap->size];
 	i = 0;
 	while (1)

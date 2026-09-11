@@ -30,6 +30,5 @@ int	main(int argc, char **argv)
 		printf("Error: simulation failed\n");
 		return (1);
 	}
-	printf("Test run complete.\n");
 	return (0);
 }

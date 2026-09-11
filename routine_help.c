@@ -39,7 +39,7 @@ void    take_dongle(t_table *table, int dg_id, int coder_id)
         return ;
     }
     pthread_mutex_unlock(&table->mutex);
-    log_locked(table, coder_id, "has taken a dongle");
+    log_action(table, coder_id, "has taken a dongle");
 }
 
 void    release_dongle(t_table *table, int dongle_id)

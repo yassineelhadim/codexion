@@ -4,7 +4,7 @@ static int	ft_check_ranges(t_config *config)
 {
 	if (config->nb_coders < 1)
 		return (ft_error("number_of_coders", "must be >= 1"));
-	if (!(config->time_to_burnout < 0))
+	if (config->time_to_burnout < 0)
 		return (ft_error("time_to_burnout", "must be >= 0"));
 	if (config->time_to_compile < 0)
 		return (ft_error("time_to_compile", "must be >= 0"));
