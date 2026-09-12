@@ -21,12 +21,6 @@
 # include <sys/time.h>
 # include <unistd.h>
 
-/*
-** One condition variable + one mutex protect the whole simulation state
-** (dongles, heaps, coder data, stop flag). Because every shared field is
-** touched under the same lock, no two threads can ever grab two locks in
-** a different order: circular-wait deadlocks are impossible by design.
-*/
 
 typedef enum e_scheduler
 {
@@ -56,12 +50,6 @@ typedef struct s_config
 	t_scheduler	scheduler;
 }	t_config;
 
-/*
-** Min-heap entry kept in each dongle's waiting queue.
-**   deadline    = last_compile_start + time_to_burnout (EDF priority)
-**   arrival_seq = global counter incremented per request (FIFO priority,
-**                 also the deterministic tie-breaker for EDF)
-*/
 typedef struct s_request
 {
 	int			coder_id;
@@ -76,10 +64,6 @@ typedef struct s_heap
 	int			capacity;
 }	t_heap;
 
-/*
-** One dongle per coder, placed between neighbour coders.
-** All fields below are protected by sim->lock.
-*/
 typedef struct s_dongle
 {
 	int			id;

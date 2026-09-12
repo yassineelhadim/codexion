@@ -38,9 +38,9 @@ static int	is_free_and_cooled(t_dongle *dongle)
 }
 
 /*
-** Single-coder case: the coder picks the same dongle with both hands.
-** The waiting queue is not used; we simply wait until the dongle is off
-** cooldown and log one "has taken a dongle" line per hand.
+** Single-coder case: there is only one dongle, so the coder can take one
+** hand but can never complete the pair. It stays waiting until the monitor
+** declares burnout.
 */
 static void	acquire_single_dongle(t_sim *sim, t_coder *coder)
 {
@@ -54,9 +54,10 @@ static void	acquire_single_dongle(t_sim *sim, t_coder *coder)
 	if (!sim->stop)
 	{
 		dongle->holder = coder->id;
-		dongle->hands = 2;
+		dongle->hands = 1;
 		log_state(sim, coder->id, "has taken a dongle");
-		log_state(sim, coder->id, "has taken a dongle");
+		while (!sim->stop)
+			pthread_cond_wait(&sim->event, &sim->lock);
 	}
 	pthread_mutex_unlock(&sim->lock);
 }

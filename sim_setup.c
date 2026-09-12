@@ -67,13 +67,6 @@ static int	init_resources(t_sim *sim, const t_config *config)
 	return (0);
 }
 
-/*
-** Every allocation is rolled back on failure, and partially initialised
-** pthread objects are destroyed before returning. main() still calls
-** sim_destroy() afterwards: it is safe to run on a partially built sim.
-** The ready flags let sim_destroy clean up safely when initialization fails
-** halfway through. main() can therefore use one cleanup path.
-*/
 int	sim_init(t_sim *sim, const t_config *config)
 {
 	sim->config = *config;
@@ -98,11 +91,6 @@ int	sim_init(t_sim *sim, const t_config *config)
 	return (init_resources(sim, config));
 }
 
-/*
-** Destroy every initialized pthread object and free every allocation.
-** The ready flags matter because destroying an uninitialized pthread object
-** is not valid.
-*/
 void	sim_destroy(t_sim *sim)
 {
 	int	i;
