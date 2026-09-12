@@ -74,8 +74,6 @@ static int	init_resources(t_sim *sim, const t_config *config)
 */
 int	sim_init(t_sim *sim, const t_config *config)
 {
-	int	i;
-
 	sim->config = *config;
 	sim->dongles = NULL;
 	sim->coders = NULL;

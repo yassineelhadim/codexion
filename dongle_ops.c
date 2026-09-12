@@ -108,9 +108,7 @@ void	acquire_dongles(t_sim *sim, t_coder *coder)
 void	withdraw_requests(t_sim *sim, t_coder *coder)
 {
 	t_dongle	*dongle;
-	int			i;
 
-	i = 0;
 	dongle = &sim->dongles[coder->left];
 	heap_remove_coder(&dongle->waiting, sim->config.scheduler, coder->id);
 	dongle = &sim->dongles[coder->right];

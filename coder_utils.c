@@ -18,7 +18,7 @@
 ** Wall-clock time in milliseconds since the Epoch, as recommended by the
 ** subject (gettimeofday).
 */
-long long	time_in_ms(void)
+long	time_in_ms(void)
 {
 	struct timeval	tv;
 

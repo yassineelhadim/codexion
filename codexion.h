@@ -44,8 +44,6 @@ typedef enum e_state
 	STATE_BURNED_OUT
 }	t_state;
 
-typedef long long	t_millis;
-
 typedef struct s_config
 {
 	int			nb_coders;
@@ -91,8 +89,6 @@ typedef struct s_dongle
 	t_heap		waiting;		/* min-heap of pending requests */
 }	t_dongle;
 
-typedef struct s_sim		t_sim;
-
 typedef struct s_coder
 {
 	int			id;
@@ -102,7 +98,7 @@ typedef struct s_coder
 	int			right;
 	long long	deadline;		/* absolute burnout deadline (ms since epoch) */
 	int			nb_compiles;
-	t_sim		*sim;
+	void		*sim;
 }	t_coder;
 
 typedef struct s_sim
@@ -159,7 +155,7 @@ void	*coder_routine(void *arg);
 
 /* coder_utils.c */
 void	sleep_interruptible(t_sim *sim, long duration_ms);
-t_millis		time_in_ms(void);
+long	time_in_ms(void);
 void	log_state(t_sim *sim, int coder_id, const char *action);
 
 #endif
