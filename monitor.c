@@ -113,8 +113,8 @@ static int	monitor_step(t_sim *sim, long long *next_tick)
 	if (all_compiles_done(sim) || log_burnout_if_due(sim, now))
 	{
 		sim->stop = 1;
-		pthread_mutex_unlock(&sim->lock);
 		pthread_cond_broadcast(&sim->event);
+		pthread_mutex_unlock(&sim->lock);
 		return (0);
 	}
 	if (now >= *next_tick)

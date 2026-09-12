@@ -26,8 +26,8 @@ static void	stop_simulation(t_sim *sim)
 {
 	pthread_mutex_lock(&sim->lock);
 	sim->stop = 1;
-	pthread_mutex_unlock(&sim->lock);
 	pthread_cond_broadcast(&sim->event);
+	pthread_mutex_unlock(&sim->lock);
 }
 
 static int	spawn_coders(t_sim *sim)
