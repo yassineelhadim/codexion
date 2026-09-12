@@ -47,10 +47,12 @@ static int	init_resources(t_sim *sim, const t_config *config)
 {
 	int	i;
 
-	sim->dongles = calloc(config->nb_coders, sizeof(t_dongle));
-	sim->coders = calloc(config->nb_coders, sizeof(t_coder));
+	sim->dongles = malloc(sizeof(t_dongle) * config->nb_coders);
+	sim->coders = malloc(sizeof(t_coder) * config->nb_coders);
 	if (sim->dongles == NULL || sim->coders == NULL)
 		return (1);
+	memset(sim->dongles, 0, sizeof(t_dongle) * config->nb_coders);
+	memset(sim->coders, 0, sizeof(t_coder) * config->nb_coders);
 	i = 0;
 	while (i < config->nb_coders)
 	{

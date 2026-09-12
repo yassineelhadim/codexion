@@ -10,8 +10,6 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <errno.h>
-
 #include "codexion.h"
 
 /*
@@ -68,7 +66,6 @@ static int	log_burnout_if_due(t_sim *sim, long long now)
 	sim->burnout_id = worst->id;
 	sim->stop = 1;
 	printf("%lld %d burned out\n", now - sim->start_time, worst->id);
-	fflush(stdout);
 	return (1);
 }
 

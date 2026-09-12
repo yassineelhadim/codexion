@@ -10,15 +10,13 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <errno.h>
-
 #include "codexion.h"
 
 /*
 ** Wall-clock time in milliseconds since the Epoch, as recommended by the
 ** subject (gettimeofday).
 */
-long	time_in_ms(void)
+long long	time_in_ms(void)
 {
 	struct timeval	tv;
 
@@ -38,7 +36,6 @@ void	log_state(t_sim *sim, int coder_id, const char *action)
 	if (sim->stop)
 		return ;
 	printf("%lld %d %s\n", time_in_ms() - sim->start_time, coder_id, action);
-	fflush(stdout);
 }
 
 /*
@@ -61,6 +58,7 @@ void	sleep_interruptible(t_sim *sim, long duration_ms)
 	struct timespec	deadline;
 	long long		wake_at;
 	int				timed_out;
+	int				wait_result;
 
 	wake_at = time_in_ms() + duration_ms;
 	deadline.tv_sec = (time_t)(wake_at / 1000);
@@ -69,8 +67,9 @@ void	sleep_interruptible(t_sim *sim, long duration_ms)
 	pthread_mutex_lock(&sim->lock);
 	while (!sim->stop && !timed_out)
 	{
-		if (pthread_cond_timedwait(&sim->event, &sim->lock, &deadline)
-			== ETIMEDOUT)
+		wait_result = pthread_cond_timedwait(&sim->event, &sim->lock,
+				&deadline);
+		if (wait_result != 0)
 			timed_out = 1;
 	}
 	pthread_mutex_unlock(&sim->lock);

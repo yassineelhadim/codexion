@@ -89,6 +89,8 @@ typedef struct s_dongle
 	t_heap		waiting;		/* min-heap of pending requests */
 }	t_dongle;
 
+typedef struct s_sim	t_sim;
+
 typedef struct s_coder
 {
 	int			id;
@@ -98,10 +100,10 @@ typedef struct s_coder
 	int			right;
 	long long	deadline;		/* absolute burnout deadline (ms since epoch) */
 	int			nb_compiles;
-	void		*sim;
+	t_sim		*sim;
 }	t_coder;
 
-typedef struct s_sim
+struct s_sim
 {
 	t_config		config;
 	t_dongle		*dongles;
@@ -113,49 +115,50 @@ typedef struct s_sim
 	long long		start_time;		/* epoch ms, set once before threads run */
 	long long		next_arrival;	/* monotonically increasing request id */
 	int				stop;			/* 1 = simulation finished */
-	int				burnout_id;		/* coder that died, 0 = nobody */
-}	t_sim;
+	int				burnout_id;	/* coder that died, 0 = nobody */
+};
 
 /* parsing.c */
-int		parse_args(int argc, char **argv, t_config *config);
+int			parse_args(int argc, char **argv, t_config *config);
 
 /* parsing_utils.c */
-int		parse_positive_long(const char *str, long *out);
-int		parse_non_negative_long(const char *str, long *out);
-int		parse_scheduler(const char *str, t_scheduler *out);
-void	print_usage(const char *prog);
+int			parse_positive_long(const char *str, long *out);
+int			parse_non_negative_long(const char *str, long *out);
+int			parse_scheduler(const char *str, t_scheduler *out);
+void		print_usage(const char *prog);
 
 /* scheduler.c (binary min-heap, no standard priority queue) */
-int		request_wins(t_scheduler sched, const t_request *a, const t_request *b);
-void	swap_requests(t_request *a, t_request *b);
-void	heap_push(t_heap *heap, t_scheduler sched, const t_request *request);
-void	heap_pop(t_heap *heap, t_scheduler sched);
-void	heap_remove_coder(t_heap *heap, t_scheduler sched, int coder_id);
-int		heap_top_is(const t_heap *heap, int coder_id);
+int			request_wins(t_scheduler sched, const t_request *a,
+				const t_request *b);
+void		swap_requests(t_request *a, t_request *b);
+void		heap_push(t_heap *h, t_scheduler s, const t_request *r);
+void		heap_pop(t_heap *heap, t_scheduler sched);
+void		heap_remove_coder(t_heap *h, t_scheduler s, int id);
+int			heap_top_is(const t_heap *heap, int coder_id);
 
 /* sim_setup.c */
-int		sim_init(t_sim *sim, const t_config *config);
-void	sim_destroy(t_sim *sim);
+int			sim_init(t_sim *sim, const t_config *config);
+void		sim_destroy(t_sim *sim);
 
 /* sim_launch.c */
-int		sim_run(t_sim *sim);
+int			sim_run(t_sim *sim);
 
 /* dongle_ops.c */
-void	acquire_dongles(t_sim *sim, t_coder *coder);
-void	release_dongles(t_sim *sim, t_coder *coder);
-void	withdraw_requests(t_sim *sim, t_coder *coder);
-void	grant_ready_pairs(t_sim *sim);
-int		coder_has_both_dongles(t_sim *sim, t_coder *coder);
+void		acquire_dongles(t_sim *sim, t_coder *coder);
+void		release_dongles(t_sim *sim, t_coder *coder);
+void		withdraw_requests(t_sim *sim, t_coder *coder);
+void		grant_ready_pairs(t_sim *sim);
+int			coder_has_both_dongles(t_sim *sim, t_coder *coder);
 
 /* monitor.c */
-void	*monitor_routine(void *arg);
+void		*monitor_routine(void *arg);
 
 /* coder.c */
-void	*coder_routine(void *arg);
+void		*coder_routine(void *arg);
 
 /* coder_utils.c */
-void	sleep_interruptible(t_sim *sim, long duration_ms);
-long	time_in_ms(void);
-void	log_state(t_sim *sim, int coder_id, const char *action);
+void		sleep_interruptible(t_sim *sim, long duration_ms);
+long long	time_in_ms(void);
+void		log_state(t_sim *sim, int coder_id, const char *action);
 
 #endif
