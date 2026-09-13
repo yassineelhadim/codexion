@@ -119,6 +119,7 @@ static int	monitor_step(t_sim *sim, long long *next_tick)
 	}
 	if (now >= *next_tick)
 	{
+		grant_ready_pairs(sim);
 		pthread_cond_broadcast(&sim->event);
 		*next_tick = now + 1;
 	}

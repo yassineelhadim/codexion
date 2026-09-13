@@ -67,7 +67,7 @@ static int	pair_is_ready(t_sim *sim, t_coder *coder)
 		|| !heap_top_is(&left->waiting, coder->id))
 		return (0);
 	if (left->id == right->id)
-		return (is_free_and_cooled(left));
+		return (0);
 	return (right->waiting.size > 0
 		&& heap_top_is(&right->waiting, coder->id)
 		&& is_free_and_cooled(left)

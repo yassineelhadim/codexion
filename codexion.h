@@ -21,7 +21,6 @@
 # include <sys/time.h>
 # include <unistd.h>
 
-
 typedef enum e_scheduler
 {
 	SCHEDULER_FIFO = 0,

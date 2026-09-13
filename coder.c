@@ -91,6 +91,8 @@ void	*coder_routine(void *arg)
 
 	coder = (t_coder *)arg;
 	sim = coder->sim;
+	if (coder->id % 2 == 0)
+		usleep(1500);
 	while (!simulation_is_over(sim))
 	{
 		compile_phase(sim, coder);

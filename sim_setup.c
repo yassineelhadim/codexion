@@ -12,13 +12,6 @@
 
 #include "codexion.h"
 
-/*
-** Layout: dongle i sits between coder i and coder i+1, so coder i holds
-** left = i and right = (i + 1) % n. With a single coder both ends are the
-** same dongle, which must be grabbed twice - the "hands" counter in
-** t_dongle models that.
-*/
-
 static void	init_coder(t_coder *coder, int id, int nb_coders)
 {
 	coder->id = id;
