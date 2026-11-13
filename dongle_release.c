@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   dongle_release.c                                   :+:      :+:    :+:   */
+/*                                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: yel-hadi <yel-hadi.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 00:00:00 by yel-hadi       #+#    #+#             */
-/*   Updated: 2026/09/11 00:00:00 by yel-hadi      ###   ########.fr       */
+/*   Created: 2026/11/12 00:00:00 by yel-hadi          #+#    #+#             */
+/*   Updated: 2026/11/12 00:00:00 by yel-hadi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,6 @@ static void	put_dongles_on_table(t_sim *sim, t_dongle *left,
 		right->holder = -1;
 		right->cooldown_until = time_in_ms() + sim->config.dongle_cooldown;
 	}
-	grant_ready_pairs(sim);
 }
 
 void	release_dongles(t_sim *sim, t_coder *coder)
@@ -43,7 +42,10 @@ void	release_dongles(t_sim *sim, t_coder *coder)
 	left = &sim->dongles[coder->left];
 	right = &sim->dongles[coder->right];
 	pthread_mutex_lock(&sim->lock);
+	lock_dongle_pair(left, right);
 	put_dongles_on_table(sim, left, right);
+	unlock_dongle_pair(left, right);
+	grant_ready_pairs(sim);
 	pthread_cond_broadcast(&sim->event);
 	pthread_mutex_unlock(&sim->lock);
 }

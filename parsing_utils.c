@@ -1,23 +1,16 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   parsing_utils.c                                    :+:      :+:    :+:   */
+/*                                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: yel-hadi <yel-hadi.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 00:00:00 by yel-hadi       #+#    #+#             */
-/*   Updated: 2026/09/11 00:00:00 by yel-hadi      ###   ########.fr       */
+/*   Created: 2026/11/12 00:00:00 by yel-hadi          #+#    #+#             */
+/*   Updated: 2026/11/12 00:00:00 by yel-hadi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
-
-/*
-** Strict decimal parser: rejects signs, spaces, non-digit characters,
-** empty strings and overflow, unlike atoi() which silently accepts garbage.
-** Values are capped at INT_MAX because every numeric field is stored as an
-** int or used as a millisecond duration well below that bound.
-*/
 
 static int	parse_decimal_long(const char *str, long *out)
 {
@@ -39,7 +32,6 @@ static int	parse_decimal_long(const char *str, long *out)
 	return (0);
 }
 
-/* Counts need at least one unit: one coder, one required compile. */
 int	parse_positive_long(const char *str, long *out)
 {
 	if (parse_decimal_long(str, out) != 0 || *out < 1)
@@ -47,7 +39,6 @@ int	parse_positive_long(const char *str, long *out)
 	return (0);
 }
 
-/* Durations in milliseconds may legitimately be zero. */
 int	parse_non_negative_long(const char *str, long *out)
 {
 	if (parse_decimal_long(str, out) != 0)

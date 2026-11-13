@@ -1,49 +1,17 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   monitor.c                                          :+:      :+:    :+:   */
+/*                                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: yel-hadi <yel-hadi.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 00:00:00 by yel-hadi       #+#    #+#             */
-/*   Updated: 2026/09/11 00:00:00 by yel-hadi      ###   ########.fr       */
+/*   Created: 2026/11/12 00:00:00 by yel-hadi          #+#    #+#             */
+/*   Updated: 2026/11/12 00:00:00 by yel-hadi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-/*
-** The monitor is a separate thread with three duties:
-**
-**  1. burnout detection: a coder that has not STARTED a compile within
-**     time_to_burnout ms since the previous compile start (or since the
-**     simulation began) burns out. The log must land within 10 ms of the
-**     deadline, so instead of polling blindly the monitor sleeps until
-**     the earliest deadline among all living coders: detection is exact
-**     to about a millisecond and costs no CPU in between.
-**
-**  2. completion detection: once every coder has compiled at least
-**     number_of_compiles_required times, the simulation stops (success).
-**
-**  3. service ticks: broadcast every millisecond. That wakes coders
-**     blocked on a dongle whose cooldown has just expired (a pure time
-**     event that nobody else would signal) and lets queued grants go
-**     through as soon as they become possible.
-**
-** Locking discipline: the loop holds sim->lock while inspecting state,
-** and pthread_cond_timedwait releases it atomically while sleeping and
-** reacquires it before returning. Whenever the simulation ends, stop is
-** set BEFORE unlocking, and the broadcast happens right after.
-*/
-
-/*
-** End the simulation because of a burnout. The "burned out" line must be
-** printed even though stop is already set (log_state goes silent on stop
-** so that nothing can appear AFTER the burnout), so it is printed here
-** directly, while still holding the lock: the line stays atomic and is
-** guaranteed to be the last one. Called with sim->lock held.
-** Returns 1 when a burnout was declared.
-*/
 static int	log_burnout_if_due(t_sim *sim, long long now)
 {
 	t_coder	*worst;
@@ -63,7 +31,6 @@ static int	log_burnout_if_due(t_sim *sim, long long now)
 	if (worst == NULL)
 		return (0);
 	worst->state = STATE_BURNED_OUT;
-	sim->burnout_id = worst->id;
 	sim->stop = 1;
 	printf("%lld %d burned out\n", now - sim->start_time, worst->id);
 	return (1);

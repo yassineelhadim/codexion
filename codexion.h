@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   codexion.h                                         :+:      :+:    :+:   */
+/*                                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: yel-hadi <yel-hadi.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 00:00:00 by yel-hadi       #+#    #+#             */
-/*   Updated: 2026/09/11 00:00:00 by yel-hadi      ###   ########.fr       */
+/*   Created: 2026/11/12 00:00:00 by yel-hadi          #+#    #+#             */
+/*   Updated: 2026/11/12 00:00:00 by yel-hadi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,11 +65,13 @@ typedef struct s_heap
 
 typedef struct s_dongle
 {
-	int			id;
-	int			holder;			/* coder_id holding it, -1 if on the table */
-	int			hands;			/* hands currently plugged (2 max, n == 1) */
-	long long	cooldown_until;	/* sim time before which it cannot be taken */
-	t_heap		waiting;		/* min-heap of pending requests */
+	pthread_mutex_t	mutex;
+	int				mutex_ready;
+	int				id;
+	int				holder;
+	int				hands;
+	long long		cooldown_until;
+	t_heap			waiting;
 }	t_dongle;
 
 typedef struct s_sim	t_sim;
@@ -81,7 +83,7 @@ typedef struct s_coder
 	t_state		state;
 	int			left;
 	int			right;
-	long long	deadline;		/* absolute burnout deadline (ms since epoch) */
+	long long	deadline;		
 	int			nb_compiles;
 	t_sim		*sim;
 }	t_coder;
@@ -95,22 +97,18 @@ struct s_sim
 	pthread_cond_t	event;
 	int				lock_ready;
 	int				event_ready;
-	long long		start_time;		/* epoch ms, set once before threads run */
-	long long		next_arrival;	/* monotonically increasing request id */
-	int				stop;			/* 1 = simulation finished */
-	int				burnout_id;	/* coder that died, 0 = nobody */
+	long long		start_time;		
+	long long		next_arrival;
+	int				stop;			
 };
 
-/* parsing.c */
 int			parse_args(int argc, char **argv, t_config *config);
 
-/* parsing_utils.c */
 int			parse_positive_long(const char *str, long *out);
 int			parse_non_negative_long(const char *str, long *out);
 int			parse_scheduler(const char *str, t_scheduler *out);
 void		print_usage(const char *prog);
 
-/* scheduler.c (binary min-heap, no standard priority queue) */
 int			request_wins(t_scheduler sched, const t_request *a,
 				const t_request *b);
 void		swap_requests(t_request *a, t_request *b);
@@ -119,27 +117,23 @@ void		heap_pop(t_heap *heap, t_scheduler sched);
 void		heap_remove_coder(t_heap *h, t_scheduler s, int id);
 int			heap_top_is(const t_heap *heap, int coder_id);
 
-/* sim_setup.c */
 int			sim_init(t_sim *sim, const t_config *config);
 void		sim_destroy(t_sim *sim);
 
-/* sim_launch.c */
 int			sim_run(t_sim *sim);
 
-/* dongle_ops.c */
 void		acquire_dongles(t_sim *sim, t_coder *coder);
 void		release_dongles(t_sim *sim, t_coder *coder);
 void		withdraw_requests(t_sim *sim, t_coder *coder);
+void		lock_dongle_pair(t_dongle *left, t_dongle *right);
+void		unlock_dongle_pair(t_dongle *left, t_dongle *right);
 void		grant_ready_pairs(t_sim *sim);
 int			coder_has_both_dongles(t_sim *sim, t_coder *coder);
 
-/* monitor.c */
 void		*monitor_routine(void *arg);
 
-/* coder.c */
 void		*coder_routine(void *arg);
 
-/* coder_utils.c */
 void		sleep_interruptible(t_sim *sim, long duration_ms);
 long long	time_in_ms(void);
 void		log_state(t_sim *sim, int coder_id, const char *action);

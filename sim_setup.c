@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   sim_setup.c                                        :+:      :+:    :+:   */
+/*                                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-hadi <marvin@42.fr>                    +#+  +:+       +#+        */
+/*   By: yel-hadi <yel-hadi.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 00:00:00 by yel-hadi       #+#    #+#             */
-/*   Updated: 2026/09/11 00:00:00 by yel-hadi      ###   ########.fr       */
+/*   Created: 2026/11/12 00:00:00 by yel-hadi          #+#    #+#             */
+/*   Updated: 2026/11/12 00:00:00 by yel-hadi         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,9 @@ static void	init_coder(t_coder *coder, int id, int nb_coders)
 
 static int	init_dongle(t_dongle *dongle, int id, int nb_coders)
 {
+	if (pthread_mutex_init(&dongle->mutex, NULL) != 0)
+		return (1);
+	dongle->mutex_ready = 1;
 	dongle->id = id;
 	dongle->holder = -1;
 	dongle->hands = 0;
@@ -32,7 +35,11 @@ static int	init_dongle(t_dongle *dongle, int id, int nb_coders)
 	dongle->waiting.capacity = nb_coders;
 	dongle->waiting.items = malloc(sizeof(t_request) * nb_coders);
 	if (dongle->waiting.items == NULL)
+	{
+		pthread_mutex_destroy(&dongle->mutex);
+		dongle->mutex_ready = 0;
 		return (1);
+	}
 	return (0);
 }
 
@@ -41,11 +48,13 @@ static int	init_resources(t_sim *sim, const t_config *config)
 	int	i;
 
 	sim->dongles = malloc(sizeof(t_dongle) * config->nb_coders);
+	if (sim->dongles != NULL)
+		memset(sim->dongles, 0, sizeof(t_dongle) * config->nb_coders);
 	sim->coders = malloc(sizeof(t_coder) * config->nb_coders);
+	if (sim->coders != NULL)
+		memset(sim->coders, 0, sizeof(t_coder) * config->nb_coders);
 	if (sim->dongles == NULL || sim->coders == NULL)
 		return (1);
-	memset(sim->dongles, 0, sizeof(t_dongle) * config->nb_coders);
-	memset(sim->coders, 0, sizeof(t_coder) * config->nb_coders);
 	i = 0;
 	while (i < config->nb_coders)
 	{
@@ -68,7 +77,6 @@ int	sim_init(t_sim *sim, const t_config *config)
 	sim->lock_ready = 0;
 	sim->event_ready = 0;
 	sim->stop = 0;
-	sim->burnout_id = 0;
 	sim->next_arrival = 0;
 	sim->start_time = time_in_ms();
 	if (pthread_mutex_init(&sim->lock, NULL) != 0)
@@ -94,6 +102,8 @@ void	sim_destroy(t_sim *sim)
 		while (i < sim->config.nb_coders)
 		{
 			free(sim->dongles[i].waiting.items);
+			if (sim->dongles[i].mutex_ready)
+				pthread_mutex_destroy(&sim->dongles[i].mutex);
 			i++;
 		}
 		free(sim->dongles);
