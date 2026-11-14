@@ -1,50 +1,61 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*                                                      :+:      :+:    :+:   */
+/*   coder_utils.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-hadi <yel-hadi.42.fr>          +#+  +:+       +#+        */
+/*   By: ysenhaji <ysenhaji@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/11/12 00:00:00 by yel-hadi          #+#    #+#             */
-/*   Updated: 2026/11/12 00:00:00 by yel-hadi         ###   ########.fr       */
+/*   Created: 2026/09/11 18:28:17 by ysenhaji          #+#    #+#             */
+/*   Updated: 2026/09/11 18:33:27 by ysenhaji         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "codexion.h"
+#include "coder_utils.h"
 
-long long	time_in_ms(void)
+t_status	compile(t_coder *coder)
 {
-	struct timeval	tv;
-
-	gettimeofday(&tv, NULL);
-	return ((long long)tv.tv_sec * 1000 + tv.tv_usec / 1000);
-}
-
-void	log_state(t_sim *sim, int coder_id, const char *action)
-{
-	if (sim->stop)
-		return ;
-	printf("%lld %d %s\n", time_in_ms() - sim->start_time, coder_id, action);
-}
-
-void	sleep_interruptible(t_sim *sim, long duration_ms)
-{
-	struct timespec	deadline;
-	long long		wake_at;
-	int				timed_out;
-	int				wait_result;
-
-	wake_at = time_in_ms() + duration_ms;
-	deadline.tv_sec = (time_t)(wake_at / 1000);
-	deadline.tv_nsec = (long)((wake_at % 1000) * 1000000L);
-	timed_out = 0;
-	pthread_mutex_lock(&sim->lock);
-	while (!sim->stop && !timed_out)
+	if (acquire_two_dongles(coder) == FAILURE)
+		return (FAILURE);
+	set_last_compile_start(coder, get_time_us());
+	if (event(coder->config, coder, "is compiling") == FAILURE)
 	{
-		wait_result = pthread_cond_timedwait(&sim->event, &sim->lock,
-				&deadline);
-		if (wait_result != 0)
-			timed_out = 1;
+		release_two_dongles(coder);
+		return (FAILURE);
 	}
-	pthread_mutex_unlock(&sim->lock);
+	nap(coder->config, coder->config->time_to_compile);
+	if (!(get_sim_state(coder->config)))
+	{
+		release_two_dongles(coder);
+		return (FAILURE);
+	}
+	increment_compile_count(coder);
+	release_two_dongles(coder);
+	return (SUCCESS);
+}
+
+t_status	debug(t_coder *coder)
+{
+	if (event(coder->config, coder, "is debugging") == FAILURE)
+		return (FAILURE);
+	nap(coder->config, coder->config->time_to_debug);
+	if (!(get_sim_state(coder->config)))
+		return (FAILURE);
+	return (SUCCESS);
+}
+
+t_status	refractor(t_coder *coder)
+{
+	if (event(coder->config, coder, "is refactoring") == FAILURE)
+		return (FAILURE);
+	nap(coder->config, coder->config->time_to_refactor);
+	if (!(get_sim_state(coder->config)))
+		return (FAILURE);
+	return (SUCCESS);
+}
+
+void	one_coder(t_coder *coder)
+{
+	acquire_dongle(coder, coder->first_dongle);
+	event(coder->config, coder, "has taken a dongle");
+	release_dongle(coder, coder->first_dongle);
 }

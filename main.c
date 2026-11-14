@@ -1,32 +1,41 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*                                                      :+:      :+:    :+:   */
+/*   main.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-hadi <yel-hadi.42.fr>          +#+  +:+       +#+        */
+/*   By: ysenhaji <ysenhaji@student.1337.ma>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/11/12 00:00:00 by yel-hadi          #+#    #+#             */
-/*   Updated: 2026/11/12 00:00:00 by yel-hadi         ###   ########.fr       */
+/*   Created: 2026/09/11 18:34:27 by ysenhaji          #+#    #+#             */
+/*   Updated: 2026/09/11 18:34:28 by ysenhaji         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
+static void	init_config_defaults(t_config *config)
+{
+	memset(config, 0, sizeof(t_config));
+}
+
 int	main(int argc, char **argv)
 {
 	t_config	config;
-	t_sim		sim;
-	int			exit_code;
 
-	if (parse_args(argc, argv, &config) != 0)
-		return (1);
-	if (sim_init(&sim, &config) != 0)
+	init_config_defaults(&config);
+	if (parse_args(argc, argv, &config) == FAILURE)
 	{
-		fprintf(stderr, "codexion: initialization failed\n");
-		sim_destroy(&sim);
 		return (1);
 	}
-	exit_code = sim_run(&sim);
-	sim_destroy(&sim);
-	return (exit_code);
+	if (init_config(&config) == FAILURE)
+	{
+		cleanup(&config);
+		return (1);
+	}
+	if (simulate(&config) == FAILURE)
+	{
+		cleanup(&config);
+		return (1);
+	}
+	cleanup(&config);
+	return (0);
 }

@@ -1,85 +1,62 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*                                                      :+:      :+:    :+:   */
+/*   coder.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: yel-hadi <yel-hadi.42.fr>          +#+  +:+       +#+        */
+/*   By: ysenhaji <ysenhaji@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/11/12 00:00:00 by yel-hadi          #+#    #+#             */
-/*   Updated: 2026/11/12 00:00:00 by yel-hadi         ###   ########.fr       */
+/*   Created: 2026/09/11 18:32:29 by ysenhaji          #+#    #+#             */
+/*   Updated: 2026/09/12 21:10:16 by ysenhaji         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
+#include "coder_utils.h"
+#include "safe_wrappers_utils.h"
 
-static int	simulation_is_over(t_sim *sim)
+static void	wait_for_start(t_coder *coder)
 {
-	int	stopped;
-
-	pthread_mutex_lock(&sim->lock);
-	stopped = sim->stop;
-	pthread_mutex_unlock(&sim->lock);
-	return (stopped);
-}
-
-static void	compile_phase(t_sim *sim, t_coder *coder)
-{
-	acquire_dongles(sim, coder);
-	pthread_mutex_lock(&sim->lock);
-	if (sim->stop)
+	safe_mutex_handle(&coder->config->start_mutex, LOCK);
+	while (!coder->config->sim_started)
+		safe_cond_wait(&coder->config->start_cond,
+			&coder->config->start_mutex);
+	if (!get_sim_state(coder->config))
 	{
-		withdraw_requests(sim, coder);
-		pthread_mutex_unlock(&sim->lock);
+		safe_mutex_handle(&coder->config->start_mutex, UNLOCK);
 		return ;
 	}
-	pthread_mutex_unlock(&sim->lock);
-	sleep_interruptible(sim, sim->config.time_to_compile);
-	pthread_mutex_lock(&sim->lock);
-	if (!sim->stop)
-		coder->nb_compiles++;
-	pthread_mutex_unlock(&sim->lock);
-	release_dongles(sim, coder);
+	safe_mutex_handle(&coder->config->start_mutex, UNLOCK);
 }
 
-static int	debug_refactor_phase(t_sim *sim, t_coder *coder)
+static void	*run_coder_loop(t_coder *coder)
 {
-	pthread_mutex_lock(&sim->lock);
-	if (sim->stop)
+	while (get_sim_state(coder->config))
 	{
-		pthread_mutex_unlock(&sim->lock);
-		return (0);
+		if (get_compile_count(coder) >= coder->config->compiles_required)
+			break ;
+		if (compile(coder) == FAILURE)
+			return (NULL);
+		if (debug(coder) == FAILURE)
+			return (NULL);
+		if (refractor(coder) == FAILURE)
+			return (NULL);
+		if (get_compile_count(coder) == coder->config->compiles_required)
+			return (NULL);
 	}
-	coder->state = STATE_DEBUGGING;
-	log_state(sim, coder->id, "is debugging");
-	pthread_mutex_unlock(&sim->lock);
-	sleep_interruptible(sim, sim->config.time_to_debug);
-	pthread_mutex_lock(&sim->lock);
-	if (sim->stop)
-	{
-		pthread_mutex_unlock(&sim->lock);
-		return (0);
-	}
-	coder->state = STATE_REFACTORING;
-	log_state(sim, coder->id, "is refactoring");
-	pthread_mutex_unlock(&sim->lock);
-	sleep_interruptible(sim, sim->config.time_to_refactor);
-	return (1);
+	return (NULL);
 }
 
 void	*coder_routine(void *arg)
 {
 	t_coder	*coder;
-	t_sim	*sim;
 
-	coder = (t_coder *)arg;
-	sim = coder->sim;
-	while (!simulation_is_over(sim))
-	{
-		compile_phase(sim, coder);
-		if (simulation_is_over(sim))
-			break ;
-		if (!debug_refactor_phase(sim, coder))
-			break ;
-	}
-	return (NULL);
+	coder = arg;
+	wait_for_start(coder);
+	if (!get_sim_state(coder->config))
+		return (NULL);
+	if (coder->config->coder_count == 1)
+		return (one_coder(coder), (NULL));
+	if (coder->id % 2 == 0)
+		usleep(500);
+	return (run_coder_loop(coder));
 }
