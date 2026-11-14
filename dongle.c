@@ -3,80 +3,123 @@
 /*                                                        :::      ::::::::   */
 /*   dongle.c                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ysenhaji <ysenhaji@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 18:33:47 by ysenhaji          #+#    #+#             */
-/*   Updated: 2026/09/11 18:33:48 by ysenhaji         ###   ########.fr       */
+/*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
+/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
-#include "dongle_utils.h"
 
-static t_status	try_acquire(t_coder *coder, t_dongle *d)
+static int	grant_dongle(t_env *env, long long now)
 {
-	while (get_sim_state(coder->config))
+	t_hnode	top;
+	int		a;
+	int		b;
+
+	top = heap_extract_min(&env->work);
+	a = top.id;
+	b = (top.id - 1 + env->n) % env->n;
+	if (a == b || env->dongles[a].taken || env->dongles[b].taken
+		|| now < env->dongles[a].free_at || now < env->dongles[b].free_at)
+		return (0);
+	env->dongles[a].taken = 1;
+	env->dongles[b].taken = 1;
+	env->waiting[top.id] = 0;
+	env->last_start[top.id] = now;
+	log_state_locked(env, top.id, "has taken a dongle");
+	log_state_locked(env, top.id, "has taken a dongle");
+	log_state_locked(env, top.id, "is compiling");
+	return (1);
+}
+
+static void	arbitrate(t_env *env)
+{
+	long long	now;
+	int			id;
+	int			granted;
+
+	if (env->stop)
+		return ;
+	now = now_ms(env);
+	env->work.n = 0;
+	id = 0;
+	while (id < env->n)
 	{
-		if (can_acquire(coder, d))
+		if (env->waiting[id])
+			heap_push(&env->work, env->k1[id], env->k2[id], id);
+		id++;
+	}
+	granted = 0;
+	while (!heap_empty(&env->work))
+	{
+		if (grant_dongle(env, now))
+			granted = 1;
+	}
+	if (granted)
+		pthread_cond_broadcast(&env->cond);
+}
+
+static int	wait_dongles(t_env *env, int id)
+{
+	if (env->stop)
+	{
+		env->waiting[id] = 0;
+		return (0);
+	}
+	if (!env->waiting[id])
+		return (1);
+	pthread_mutex_unlock(&env->lock);
+	usleep(1000);
+	pthread_mutex_lock(&env->lock);
+	arbitrate(env);
+	return (-1);
+}
+
+int	acquire_dongles(t_env *env, int id)
+{
+	long long		myseq;
+	int				result;
+
+	pthread_mutex_lock(&env->lock);
+	myseq = (env->seq)++;
+	if (env->scheduler == SCHED_FIFO_T)
+		env->k1[id] = myseq;
+	else
+		env->k1[id] = env->last_start[id] + env->t_burnout;
+	env->k2[id] = myseq;
+	env->waiting[id] = 1;
+	arbitrate(env);
+	while (1)
+	{
+		result = wait_dongles(env, id);
+		if (result != -1)
 		{
-			heap_pop(d);
-			d->held_by = coder->id;
-			safe_mutex_handle(&d->mutex, UNLOCK);
-			return (SUCCESS);
+			pthread_mutex_unlock(&env->lock);
+			return (result);
 		}
-		if (wait_for_dongle(coder, d) == FAILURE)
-			break ;
 	}
-	heap_remove(d, coder->id);
-	safe_mutex_handle(&d->mutex, UNLOCK);
-	return (FAILURE);
 }
 
-t_status	acquire_dongle(t_coder *coder, t_dongle *d)
+void	release_dongles(t_env *env, int id)
 {
-	t_request	request;
+	int			a;
+	int			b;
+	long long	now;
 
-	safe_mutex_handle(&d->mutex, LOCK);
-	if (!get_sim_state(coder->config))
+	a = id;
+	b = (id - 1 + env->n) % env->n;
+	pthread_mutex_lock(&env->lock);
+	now = now_ms(env);
+	env->dongles[a].taken = 0;
+	env->dongles[a].free_at = now + env->cooldown;
+	if (b != a)
 	{
-		safe_mutex_handle(&d->mutex, UNLOCK);
-		return (FAILURE);
+		env->dongles[b].taken = 0;
+		env->dongles[b].free_at = now + env->cooldown;
 	}
-	init_request(&request, coder);
-	if (!(get_sim_state(coder->config)))
-	{
-		safe_mutex_handle(&d->mutex, UNLOCK);
-		return (FAILURE);
-	}
-	heap_push(d, request);
-	return (try_acquire(coder, d));
-}
-
-void	release_dongle(t_coder *coder, t_dongle *d)
-{
-	safe_mutex_handle(&d->mutex, LOCK);
-	d->available_at = get_time_us() + coder->config->dongle_cooldown;
-	d->held_by = -1;
-	safe_cond_handle(&d->cond, BROADCAST);
-	safe_mutex_handle(&d->mutex, UNLOCK);
-}
-
-void	release_two_dongles(t_coder *coder)
-{
-	release_dongle(coder, coder->second_dongle);
-	release_dongle(coder, coder->first_dongle);
-}
-
-t_status	acquire_two_dongles(t_coder *coder)
-{
-	if (acquire_dongle(coder, coder->first_dongle) == FAILURE)
-		return (FAILURE);
-	event(coder->config, coder, "has taken a dongle");
-	if (acquire_dongle(coder, coder->second_dongle) == FAILURE)
-	{
-		release_dongle(coder, coder->first_dongle);
-		return (FAILURE);
-	}
-	event(coder->config, coder, "has taken a dongle");
-	return (SUCCESS);
+	arbitrate(env);
+	pthread_cond_broadcast(&env->cond);
+	pthread_mutex_unlock(&env->lock);
 }

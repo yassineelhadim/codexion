@@ -3,79 +3,59 @@
 /*                                                        :::      ::::::::   */
 /*   monitor.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ysenhaji <ysenhaji@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 18:34:30 by ysenhaji          #+#    #+#             */
-/*   Updated: 2026/09/11 18:34:31 by ysenhaji         ###   ########.fr       */
+/*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
+/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
-#include "safe_wrappers_utils.h"
 
-static void	wait_for_start(t_config *config)
+static long long	earliest_deadline(t_env *env, int *who)
 {
-	safe_mutex_handle(&config->start_mutex, LOCK);
-	while (!config->sim_started)
-		safe_cond_wait(&config->start_cond, &config->start_mutex);
-	safe_mutex_handle(&config->start_mutex, UNLOCK);
-}
+	long long	deadline;
+	long long	d;
+	int			i;
 
-static bool	check_burnout(t_config *config, t_coder *coder)
-{
-	long long	last;
-
-	last = get_last_compile_start(coder);
-	if (last == 0)
-		last = config->started_at;
-	if (last + config->time_to_burnout <= get_time_us())
-	{
-		set_sim_state(config, false);
-		event_burnout(config, coder);
-		return (true);
-	}
-	return (false);
-}
-
-static bool	check_all_coders(t_config *config)
-{
-	int	i;
-	int	coders_done;
-
+	deadline = LLONG_MAX;
+	*who = -1;
 	i = 0;
-	coders_done = 0;
-	while (i < config->coder_count)
+	while (i < env->n)
 	{
-		if (get_compile_count(&config->coders[i])
-			== config->compiles_required)
+		d = env->last_start[i] + env->t_burnout;
+		if (d < deadline)
 		{
-			coders_done++;
-			i++;
-			continue ;
+			deadline = d;
+			*who = i;
 		}
-		if (check_burnout(config, &config->coders[i]))
-			return (true);
 		i++;
 	}
-	if (coders_done == config->coder_count)
-	{
-		set_sim_state(config, false);
-		return (true);
-	}
-	return (false);
+	return (deadline);
 }
 
 void	*monitor_routine(void *arg)
 {
-	t_config	*config;
+	t_env			*env;
+	long long		deadline;
+	int				who;
 
-	config = arg;
-	wait_for_start(config);
-	while (get_sim_state(config))
+	env = arg;
+	pthread_mutex_lock(&env->lock);
+	while (!env->stop)
 	{
-		if (check_all_coders(config))
-			return (NULL);
-		nap(config, 1000);
+		deadline = earliest_deadline(env, &who);
+		if (now_ms(env) >= deadline)
+		{
+			env->stop = 1;
+			log_state_locked(env, who, "burned out");
+			pthread_cond_broadcast(&env->cond);
+			break ;
+		}
+		pthread_mutex_unlock(&env->lock);
+		usleep(1000);
+		pthread_mutex_lock(&env->lock);
 	}
+	pthread_mutex_unlock(&env->lock);
 	return (NULL);
 }

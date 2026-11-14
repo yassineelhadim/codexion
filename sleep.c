@@ -1,25 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   comparators.c                                      :+:      :+:    :+:   */
+/*   sleep.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ysenhaji <ysenhaji@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 18:33:34 by ysenhaji          #+#    #+#             */
-/*   Updated: 2026/09/11 18:33:35 by ysenhaji         ###   ########.fr       */
+/*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
+/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-int	fifo_cmp(t_request *a, t_request *b)
+void	sleep_ms(t_env *env, long long ms)
 {
-	return (a->timestamp < b->timestamp);
-}
+	long long	start;
 
-int	edf_cmp(t_request *a, t_request *b)
-{
-	if (a->deadline == b->deadline)
-		return (a->timestamp < b->timestamp);
-	return (a->deadline < b->deadline);
+	start = now_ms(env);
+	while (now_ms(env) - start < ms)
+	{
+		if (should_stop(env))
+			return ;
+		usleep(500);
+	}
 }

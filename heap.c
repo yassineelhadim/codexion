@@ -3,60 +3,76 @@
 /*                                                        :::      ::::::::   */
 /*   heap.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ysenhaji <ysenhaji@student.1337.ma>        +#+  +:+       +#+        */
+/*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 18:34:00 by ysenhaji          #+#    #+#             */
-/*   Updated: 2026/09/11 18:34:01 by ysenhaji         ###   ########.fr       */
+/*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
+/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
-#include "heap_utils.h"
 
-void	heap_push(t_dongle *dongle, t_request req)
+int	heap_init(t_heap *h, int cap)
 {
-	if (dongle->queue_size >= dongle->queue_capacity)
-		return ;
-	dongle->queue[dongle->queue_size] = req;
-	dongle->queue_size++;
-	heap_up(dongle, dongle->queue_size - 1);
+	h->a = malloc(sizeof(t_hnode) * cap);
+	h->n = 0;
+	h->cap = cap;
+	return (h->a == NULL);
 }
 
-t_request	heap_pop(t_dongle *dongle)
+void	heap_free(t_heap *h)
 {
-	t_request	result;
-
-	if (dongle->queue_size == 0)
-		return ((t_request){0});
-	result = dongle->queue[0];
-	dongle->queue[0] = dongle->queue[dongle->queue_size - 1];
-	dongle->queue_size--;
-	heap_down(dongle, 0);
-	return (result);
+	free(h->a);
 }
 
-t_request	heap_peek(t_dongle *dongle)
+void	heap_push(t_heap *h, long long k1, long long k2, int id)
 {
-	if (dongle->queue_size <= 0)
-		return ((t_request){0});
-	return (dongle->queue[0]);
-}
+	int	i;
+	int	p;
 
-void	heap_remove(t_dongle *dongle, int coder_id)
-{
-	int	remove;
-
-	remove = find_coder_in_heap(dongle, coder_id);
-	if (remove == -1)
-		return ;
-	if (remove == dongle->queue_size - 1)
+	i = h->n++;
+	h->a[i].k1 = k1;
+	h->a[i].k2 = k2;
+	h->a[i].id = id;
+	while (i > 0)
 	{
-		dongle->queue_size--;
-		return ;
+		p = (i - 1) / 2;
+		if (!heap_less(&h->a[i], &h->a[p]))
+			break ;
+		heap_swap(&h->a[i], &h->a[p]);
+		i = p;
 	}
-	swap_requests(&dongle->queue[remove],
-		&dongle->queue[dongle->queue_size - 1]);
-	dongle->queue_size--;
-	heap_down(dongle, remove);
-	heap_up(dongle, remove);
+}
+
+t_hnode	heap_extract_min(t_heap *h)
+{
+	t_hnode	top;
+	int		i;
+	int		l;
+	int		r;
+	int		m;
+
+	top = h->a[0];
+	h->a[0] = h->a[--h->n];
+	i = 0;
+	while (1)
+	{
+		l = 2 * i + 1;
+		r = 2 * i + 2;
+		m = i;
+		if (l < h->n && heap_less(&h->a[l], &h->a[m]))
+			m = l;
+		if (r < h->n && heap_less(&h->a[r], &h->a[m]))
+			m = r;
+		if (m == i)
+			break ;
+		heap_swap(&h->a[i], &h->a[m]);
+		i = m;
+	}
+	return (top);
+}
+
+int	heap_empty(t_heap *h)
+{
+	return (h->n == 0);
 }

@@ -3,60 +3,81 @@
 /*                                                        :::      ::::::::   */
 /*   coder.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ysenhaji <ysenhaji@student.42.fr>          +#+  +:+       +#+        */
+/*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/09/11 18:32:29 by ysenhaji          #+#    #+#             */
-/*   Updated: 2026/09/12 21:10:16 by ysenhaji         ###   ########.fr       */
+/*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
+/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
-#include "coder_utils.h"
-#include "safe_wrappers_utils.h"
 
-static void	wait_for_start(t_coder *coder)
+static int	all_done(t_env *env)
 {
-	safe_mutex_handle(&coder->config->start_mutex, LOCK);
-	while (!coder->config->sim_started)
-		safe_cond_wait(&coder->config->start_cond,
-			&coder->config->start_mutex);
-	if (!get_sim_state(coder->config))
+	int	i;
+
+	i = 0;
+	while (i < env->n)
 	{
-		safe_mutex_handle(&coder->config->start_mutex, UNLOCK);
-		return ;
+		if (env->done[i] < env->compiles_required)
+			return (0);
+		i++;
 	}
-	safe_mutex_handle(&coder->config->start_mutex, UNLOCK);
+	return (1);
 }
 
-static void	*run_coder_loop(t_coder *coder)
+static int	compile_once(t_env *env, int id)
 {
-	while (get_sim_state(coder->config))
+	int	stop;
+
+	sleep_ms(env, env->t_compile);
+	release_dongles(env, id);
+	pthread_mutex_lock(&env->lock);
+	env->done[id]++;
+	if (all_done(env))
 	{
-		if (get_compile_count(coder) >= coder->config->compiles_required)
-			break ;
-		if (compile(coder) == FAILURE)
-			return (NULL);
-		if (debug(coder) == FAILURE)
-			return (NULL);
-		if (refractor(coder) == FAILURE)
-			return (NULL);
-		if (get_compile_count(coder) == coder->config->compiles_required)
-			return (NULL);
+		env->stop = 1;
+		pthread_cond_broadcast(&env->cond);
 	}
-	return (NULL);
+	stop = env->stop;
+	pthread_mutex_unlock(&env->lock);
+	return (!stop);
+}
+
+static int	activity(t_env *env, int id, const char *msg, long long time)
+{
+	pthread_mutex_lock(&env->lock);
+	if (env->stop)
+	{
+		pthread_mutex_unlock(&env->lock);
+		return (0);
+	}
+	log_state_locked(env, id, msg);
+	pthread_mutex_unlock(&env->lock);
+	sleep_ms(env, time);
+	return (!should_stop(env));
 }
 
 void	*coder_routine(void *arg)
 {
-	t_coder	*coder;
+	t_ctx	*c;
+	t_env	*env;
+	int		id;
 
-	coder = arg;
-	wait_for_start(coder);
-	if (!get_sim_state(coder->config))
-		return (NULL);
-	if (coder->config->coder_count == 1)
-		return (one_coder(coder), (NULL));
-	if (coder->id % 2 == 0)
-		usleep(500);
-	return (run_coder_loop(coder));
+	c = arg;
+	env = c->env;
+	id = c->id;
+	free(c);
+	while (1)
+	{
+		if (!acquire_dongles(env, id))
+			break ;
+		if (!compile_once(env, id))
+			break ;
+		if (!activity(env, id, "is debugging", env->t_debug))
+			break ;
+		if (!activity(env, id, "is refactoring", env->t_refactor))
+			break ;
+	}
+	return (NULL);
 }
