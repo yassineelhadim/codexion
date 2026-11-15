@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   codexion.h                                        :+:      :+:    :+:   */
+/*   codexion.h                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
-/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
+/*   Updated: 2026/11/15 18:08:30 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,87 +21,85 @@
 # include <unistd.h>
 # include <limits.h>
 
-# define SCHED_FIFO_T 0
-# define SCHED_EDF_T 1
+# define MODE_FIFO 0
+# define MODE_EDF 1
 
-typedef struct s_hnode
+typedef struct s_request
 {
-	long long	primary_priority;
-	long long	secondary_priority;
-	int			coder_index;
-}	t_hnode;
+	long long	priority;
+	long long	order;
+	int			coder_id;
+}	t_request;
 
-typedef struct s_heap
+typedef struct s_queue
 {
-	t_hnode	*nodes;
-	int		count;
-	int		capacity;
-}	t_heap;
+	t_request	*items;
+	int			size;
+	int			capacity;
+}	t_queue;
 
 typedef struct s_dongle
 {
-	int				is_taken;
-	long long		available_after_ms;
+	int			in_use;
+	long long	ready_at_ms;
 }	t_dongle;
 
-typedef struct s_env
+typedef struct s_sim
 {
-	int				coder_count;
-	long long		burnout_interval_ms;
-	long long		compile_duration_ms;
-	long long		debug_duration_ms;
-	long long		refactor_duration_ms;
-	long long		required_compile_count;
-	long long		dongle_cooldown_ms;
-	int				scheduler_policy;
-	int				simulation_stopped;
-	long long		next_request_sequence;
-	struct timeval	simulation_start_time;
-	pthread_mutex_t	state_mutex;
-	pthread_mutex_t	output_mutex;
-	pthread_cond_t	state_changed;
-	t_dongle		*dongle_states;
-	long long		*last_compile_start_ms;
-	long long		*completed_compiles;
-	int				*has_pending_request;
-	long long		*priority_primary;
-	long long		*priority_secondary;
-	t_heap			request_heap;
-}	t_env;
+	int				coders_count;
+	long long		burnout_ms;
+	long long		compile_ms;
+	long long		debug_ms;
+	long long		refactor_ms;
+	long long		goal_compiles;
+	long long		cooldown_ms;
+	int				mode;
+	int				stopped;
+	long long		next_ticket;
+	struct timeval	start_time;
+	pthread_mutex_t	lock;
+	pthread_mutex_t	print_lock;
+	pthread_cond_t	wake_signal;
+	t_dongle		*dongles;
+	long long		*last_compile_ms;
+	long long		*compiles_done;
+	int				*is_waiting;
+	long long		*req_priority;
+	long long		*req_order;
+	t_queue			queue;
+}	t_sim;
 
-typedef struct s_ctx
+typedef struct s_coder_arg
 {
-	t_env		*env;
-	int			coder_index;
-}	t_ctx;
+	t_sim	*sim;
+	int		coder_id;
+}	t_coder_arg;
 
-long long	elapsed_ms(t_env *env);
-void		set_deadline_timespec(struct timespec *ts, t_env *env,
-				long long ms);
-void		write_state(t_env *env, int id, const char *msg);
-void		write_state_locked(t_env *env, int id, const char *msg);
-int			simulation_stopped(t_env *env);
-void		sleep_milliseconds(t_env *env, long long ms);
+long long	now_ms(t_sim *sim);
+void		set_timeout(struct timespec *ts, t_sim *sim, long long ms);
+void		log_status(t_sim *sim, int coder_id, const char *msg);
+void		log_status_locked(t_sim *sim, int coder_id, const char *msg);
+int			is_stopped(t_sim *sim);
+void		smart_sleep(t_sim *sim, long long ms);
 
-int			priority_heap_init(t_heap *heap, int capacity);
-void		priority_heap_free(t_heap *heap);
-void		priority_heap_push(t_heap *heap, long long primary_priority,
-				long long secondary_priority, int coder_index);
-t_hnode		priority_heap_extract_min(t_heap *heap);
-int			priority_heap_is_empty(t_heap *heap);
-int			request_has_higher_priority(t_hnode *left, t_hnode *right);
-void		swap_heap_nodes(t_hnode *left, t_hnode *right);
-void		sift_priority_heap_down(t_heap *heap);
+int			queue_init(t_queue *q, int capacity);
+void		queue_free(t_queue *q);
+void		queue_push(t_queue *q, long long priority, long long order,
+				int coder_id);
+t_request	queue_pop(t_queue *q);
+int			queue_empty(t_queue *q);
+int			has_higher_priority(t_request *a, t_request *b);
+void		swap_requests(t_request *a, t_request *b);
+void		queue_sift_down(t_queue *q);
 
-int			request_dongle_pair(t_env *env, int coder_index);
-void		release_dongle_pair(t_env *env, int coder_index);
+int			take_dongles(t_sim *sim, int coder_id);
+void		drop_dongles(t_sim *sim, int coder_id);
 
-void		*run_coder_thread(void *arg);
+void		*coder_loop(void *arg);
+void		*monitor_loop(void *arg);
 
-void		*run_burnout_monitor(void *arg);
-
-int			parse_simulation_arguments(int argc, char **argv, t_env *env);
-int			initialize_simulation_environment(t_env *env);
-void		destroy_simulation_environment(t_env *env);
+int			parse_args(int argc, char **argv, t_sim *sim);
+int			init_sim(t_sim *sim);
+void		free_sim(t_sim *sim);
 
 #endif

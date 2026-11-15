@@ -6,56 +6,56 @@
 /*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
-/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
+/*   Updated: 2026/11/15 18:08:30 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-static long long	earliest_deadline(t_env *env, int *who)
+static long long	next_burnout(t_sim *sim, int *who)
 {
+	long long	earliest;
 	long long	deadline;
-	long long	d;
-	int			i;
+	int			id;
 
-	deadline = LLONG_MAX;
+	earliest = LLONG_MAX;
 	*who = -1;
-	i = 0;
-	while (i < env->coder_count)
+	id = 0;
+	while (id < sim->coders_count)
 	{
-		d = env->last_compile_start_ms[i] + env->burnout_interval_ms;
-		if (d < deadline)
+		deadline = sim->last_compile_ms[id] + sim->burnout_ms;
+		if (deadline < earliest)
 		{
-			deadline = d;
-			*who = i;
+			earliest = deadline;
+			*who = id;
 		}
-		i++;
+		id++;
 	}
-	return (deadline);
+	return (earliest);
 }
 
-void	*run_burnout_monitor(void *arg)
+void	*monitor_loop(void *arg)
 {
-	t_env			*env;
-	long long		deadline;
-	int				who;
+	t_sim		*sim;
+	long long	deadline;
+	int			who;
 
-	env = arg;
-	pthread_mutex_lock(&env->state_mutex);
-	while (!env->simulation_stopped)
+	sim = arg;
+	pthread_mutex_lock(&sim->lock);
+	while (!sim->stopped)
 	{
-		deadline = earliest_deadline(env, &who);
-		if (elapsed_ms(env) >= deadline)
+		deadline = next_burnout(sim, &who);
+		if (now_ms(sim) >= deadline)
 		{
-			env->simulation_stopped = 1;
-			write_state_locked(env, who, "burned out");
-			pthread_cond_broadcast(&env->state_changed);
+			sim->stopped = 1;
+			log_status_locked(sim, who, "burned out");
+			pthread_cond_broadcast(&sim->wake_signal);
 			break ;
 		}
-		pthread_mutex_unlock(&env->state_mutex);
+		pthread_mutex_unlock(&sim->lock);
 		usleep(1000);
-		pthread_mutex_lock(&env->state_mutex);
+		pthread_mutex_lock(&sim->lock);
 	}
-	pthread_mutex_unlock(&env->state_mutex);
+	pthread_mutex_unlock(&sim->lock);
 	return (NULL);
 }

@@ -1,78 +1,89 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: mberouak                                +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
+/*   Updated: 2026/11/15 18:08:30 by mberouak         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "codexion.h"
 
-static void	print_argument_usage(char *name)
+static void	show_usage(char *prog)
 {
 	fprintf(stderr, "Usage: %s number_of_coders time_to_burnout "
 		"time_to_compile time_to_debug time_to_refactor "
 		"number_of_compiles_required dongle_cooldown scheduler(fifo|edf)\n"
-		"All numeric arguments must be non-negative integers.\n", name);
+		"All numeric arguments must be non-negative integers.\n", prog);
 }
 
-static int	parse_and_initialize(int argc, char **argv, t_env *env)
+static int	start_sim(int argc, char **argv, t_sim *sim)
 {
-	if (parse_simulation_arguments(argc, argv, env))
+	if (parse_args(argc, argv, sim))
 	{
-		print_argument_usage(argv[0]);
+		show_usage(argv[0]);
 		return (1);
 	}
-	if (initialize_simulation_environment(env))
+	if (init_sim(sim))
 	{
 		fprintf(stderr, "Error: allocation failed\n");
 		return (1);
 	}
-	gettimeofday(&env->simulation_start_time, NULL);
+	gettimeofday(&sim->start_time, NULL);
 	return (0);
 }
 
-static pthread_t	*launch_coder_threads(t_env *env, pthread_t *monitor)
+static pthread_t	*spawn_threads(t_sim *sim, pthread_t *monitor)
 {
 	pthread_t	*coders;
-	t_ctx		*c;
-	int			i;
+	t_coder_arg	*arg;
+	int			id;
 
-	coders = malloc(sizeof(pthread_t) * env->coder_count);
+	coders = malloc(sizeof(pthread_t) * sim->coders_count);
 	if (!coders)
 		return (NULL);
-	pthread_create(monitor, NULL, run_burnout_monitor, env);
-	i = 0;
-	while (i < env->coder_count)
+	pthread_create(monitor, NULL, monitor_loop, sim);
+	id = 0;
+	while (id < sim->coders_count)
 	{
-		c = malloc(sizeof(t_ctx));
-		c->env = env;
-		c->coder_index = i;
-		pthread_create(&coders[i], NULL, run_coder_thread, c);
-		i++;
+		arg = malloc(sizeof(t_coder_arg));
+		arg->sim = sim;
+		arg->coder_id = id;
+		pthread_create(&coders[id], NULL, coder_loop, arg);
+		id++;
 	}
 	return (coders);
 }
 
-static void	join_simulation_threads(t_env *env, pthread_t *coders,
-		pthread_t monitor)
+static void	join_threads(t_sim *sim, pthread_t *coders, pthread_t monitor)
 {
-	int	i;
+	int	id;
 
-	i = 0;
-	while (i < env->coder_count)
-		pthread_join(coders[i++], NULL);
+	id = 0;
+	while (id < sim->coders_count)
+		pthread_join(coders[id++], NULL);
 	pthread_join(monitor, NULL);
 }
 
 int	main(int argc, char **argv)
 {
-	t_env		env;
+	t_sim		sim;
 	pthread_t	monitor;
 	pthread_t	*coders;
 
-	if (parse_and_initialize(argc, argv, &env))
+	if (start_sim(argc, argv, &sim))
 		return (1);
-	coders = launch_coder_threads(&env, &monitor);
+	coders = spawn_threads(&sim, &monitor);
 	if (!coders)
 	{
-		destroy_simulation_environment(&env);
+		free_sim(&sim);
 		return (1);
 	}
-	join_simulation_threads(&env, coders, monitor);
+	join_threads(&sim, coders, monitor);
 	free(coders);
-	destroy_simulation_environment(&env);
+	free_sim(&sim);
 	return (0);
 }

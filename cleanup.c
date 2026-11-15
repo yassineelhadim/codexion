@@ -6,22 +6,22 @@
 /*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
-/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
+/*   Updated: 2026/11/15 18:08:30 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-void	destroy_simulation_environment(t_env *env)
+void	free_sim(t_sim *sim)
 {
-	free(env->dongle_states);
-	free(env->last_compile_start_ms);
-	free(env->completed_compiles);
-	free(env->has_pending_request);
-	free(env->priority_primary);
-	free(env->priority_secondary);
-	priority_heap_free(&env->request_heap);
-	pthread_mutex_destroy(&env->state_mutex);
-	pthread_mutex_destroy(&env->output_mutex);
-	pthread_cond_destroy(&env->state_changed);
+	free(sim->dongles);
+	free(sim->last_compile_ms);
+	free(sim->compiles_done);
+	free(sim->is_waiting);
+	free(sim->req_priority);
+	free(sim->req_order);
+	queue_free(&sim->queue);
+	pthread_mutex_destroy(&sim->lock);
+	pthread_mutex_destroy(&sim->print_lock);
+	pthread_cond_destroy(&sim->wake_signal);
 }

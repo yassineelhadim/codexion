@@ -6,20 +6,20 @@
 /*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/08/07 18:23:41 by mberouak          #+#    #+#             */
-/*   Updated: 2026/09/07 22:47:09 by mberouak         ###   ########.fr       */
+/*   Updated: 2026/11/15 18:08:30 by mberouak         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "codexion.h"
 
-void	sleep_milliseconds(t_env *env, long long ms)
+void	smart_sleep(t_sim *sim, long long ms)
 {
 	long long	start;
 
-	start = elapsed_ms(env);
-	while (elapsed_ms(env) - start < ms)
+	start = now_ms(sim);
+	while (now_ms(sim) - start < ms)
 	{
-		if (simulation_stopped(env))
+		if (is_stopped(sim))
 			return ;
 		usleep(500);
 	}

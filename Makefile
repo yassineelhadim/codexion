@@ -2,7 +2,16 @@ NAME	= codexion
 CC		= cc
 CFLAGS	= -Wall -Wextra -Werror -pthread
 
-SRCS	= main.c arguments.c environment_cleanup.c priority_heap.c priority_heap_utils.c dongle_access.c coder_thread.c burnout_monitor.c simulation_time.c interruptible_sleep.c
+SRCS	= main.c \
+		  setup.c \
+		  cleanup.c \
+		  queue.c \
+		  queue_utils.c \
+		  dongles.c \
+		  coder.c \
+		  monitor.c \
+		  time_log.c \
+		  sleep.c
 OBJS	= $(SRCS:.c=.o)
 
 all: $(NAME)
