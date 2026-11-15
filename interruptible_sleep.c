@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   cleanup.c                                          :+:      :+:    :+:   */
+/*   sleep.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,16 +12,15 @@
 
 #include "codexion.h"
 
-void	env_destroy(t_env *env)
+void	sleep_milliseconds(t_env *env, long long ms)
 {
-	free(env->dongles);
-	free(env->last_start);
-	free(env->done);
-	free(env->waiting);
-	free(env->k1);
-	free(env->k2);
-	heap_free(&env->work);
-	pthread_mutex_destroy(&env->lock);
-	pthread_mutex_destroy(&env->log_lock);
-	pthread_cond_destroy(&env->cond);
+	long long	start;
+
+	start = elapsed_ms(env);
+	while (elapsed_ms(env) - start < ms)
+	{
+		if (simulation_stopped(env))
+			return ;
+		usleep(500);
+	}
 }

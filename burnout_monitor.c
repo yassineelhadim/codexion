@@ -21,9 +21,9 @@ static long long	earliest_deadline(t_env *env, int *who)
 	deadline = LLONG_MAX;
 	*who = -1;
 	i = 0;
-	while (i < env->n)
+	while (i < env->coder_count)
 	{
-		d = env->last_start[i] + env->t_burnout;
+		d = env->last_compile_start_ms[i] + env->burnout_interval_ms;
 		if (d < deadline)
 		{
 			deadline = d;
@@ -34,28 +34,28 @@ static long long	earliest_deadline(t_env *env, int *who)
 	return (deadline);
 }
 
-void	*monitor_routine(void *arg)
+void	*run_burnout_monitor(void *arg)
 {
 	t_env			*env;
 	long long		deadline;
 	int				who;
 
 	env = arg;
-	pthread_mutex_lock(&env->lock);
-	while (!env->stop)
+	pthread_mutex_lock(&env->state_mutex);
+	while (!env->simulation_stopped)
 	{
 		deadline = earliest_deadline(env, &who);
-		if (now_ms(env) >= deadline)
+		if (elapsed_ms(env) >= deadline)
 		{
-			env->stop = 1;
-			log_state_locked(env, who, "burned out");
-			pthread_cond_broadcast(&env->cond);
+			env->simulation_stopped = 1;
+			write_state_locked(env, who, "burned out");
+			pthread_cond_broadcast(&env->state_changed);
 			break ;
 		}
-		pthread_mutex_unlock(&env->lock);
+		pthread_mutex_unlock(&env->state_mutex);
 		usleep(1000);
-		pthread_mutex_lock(&env->lock);
+		pthread_mutex_lock(&env->state_mutex);
 	}
-	pthread_mutex_unlock(&env->lock);
+	pthread_mutex_unlock(&env->state_mutex);
 	return (NULL);
 }

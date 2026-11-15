@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   heap_utils.c                                       :+:      :+:    :+:   */
+/*   cleanup.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: mberouak                                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,18 +12,16 @@
 
 #include "codexion.h"
 
-int	heap_less(t_hnode *x, t_hnode *y)
+void	destroy_simulation_environment(t_env *env)
 {
-	if (x->k1 != y->k1)
-		return (x->k1 < y->k1);
-	return (x->k2 < y->k2);
-}
-
-void	heap_swap(t_hnode *x, t_hnode *y)
-{
-	t_hnode	tmp;
-
-	tmp = *x;
-	*x = *y;
-	*y = tmp;
+	free(env->dongle_states);
+	free(env->last_compile_start_ms);
+	free(env->completed_compiles);
+	free(env->has_pending_request);
+	free(env->priority_primary);
+	free(env->priority_secondary);
+	priority_heap_free(&env->request_heap);
+	pthread_mutex_destroy(&env->state_mutex);
+	pthread_mutex_destroy(&env->output_mutex);
+	pthread_cond_destroy(&env->state_changed);
 }

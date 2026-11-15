@@ -26,79 +26,82 @@
 
 typedef struct s_hnode
 {
-	long long	k1;
-	long long	k2;
-	int			id;
+	long long	primary_priority;
+	long long	secondary_priority;
+	int			coder_index;
 }	t_hnode;
 
 typedef struct s_heap
 {
-	t_hnode	*a;
-	int		n;
-	int		cap;
+	t_hnode	*nodes;
+	int		count;
+	int		capacity;
 }	t_heap;
 
 typedef struct s_dongle
 {
-	int			taken;
-	long long	free_at;
+	int				is_taken;
+	long long		available_after_ms;
 }	t_dongle;
 
 typedef struct s_env
 {
-	int				n;
-	long long		t_burnout;
-	long long		t_compile;
-	long long		t_debug;
-	long long		t_refactor;
-	long long		compiles_required;
-	long long		cooldown;
-	int				scheduler;
-	int				stop;
-	long long		seq;
-	struct timeval	t0;
-	pthread_mutex_t	lock;
-	pthread_mutex_t	log_lock;
-	pthread_cond_t	cond;
-	t_dongle		*dongles;
-	long long		*last_start;
-	long long		*done;
-	int				*waiting;
-	long long		*k1;
-	long long		*k2;
-	t_heap			work;
+	int				coder_count;
+	long long		burnout_interval_ms;
+	long long		compile_duration_ms;
+	long long		debug_duration_ms;
+	long long		refactor_duration_ms;
+	long long		required_compile_count;
+	long long		dongle_cooldown_ms;
+	int				scheduler_policy;
+	int				simulation_stopped;
+	long long		next_request_sequence;
+	struct timeval	simulation_start_time;
+	pthread_mutex_t	state_mutex;
+	pthread_mutex_t	output_mutex;
+	pthread_cond_t	state_changed;
+	t_dongle		*dongle_states;
+	long long		*last_compile_start_ms;
+	long long		*completed_compiles;
+	int				*has_pending_request;
+	long long		*priority_primary;
+	long long		*priority_secondary;
+	t_heap			request_heap;
 }	t_env;
 
 typedef struct s_ctx
 {
-	t_env	*env;
-	int		id;
+	t_env		*env;
+	int			coder_index;
 }	t_ctx;
 
-long long	now_ms(t_env *env);
-void		ts_add_ms(struct timespec *ts, t_env *env, long long ms);
-void		log_state(t_env *env, int id, const char *msg);
-void		log_state_locked(t_env *env, int id, const char *msg);
-int			should_stop(t_env *env);
-void		sleep_ms(t_env *env, long long ms);
+long long	elapsed_ms(t_env *env);
+void		set_deadline_timespec(struct timespec *ts, t_env *env,
+				long long ms);
+void		write_state(t_env *env, int id, const char *msg);
+void		write_state_locked(t_env *env, int id, const char *msg);
+int			simulation_stopped(t_env *env);
+void		sleep_milliseconds(t_env *env, long long ms);
 
-int			heap_init(t_heap *h, int cap);
-void		heap_free(t_heap *h);
-void		heap_push(t_heap *h, long long k1, long long k2, int id);
-t_hnode		heap_extract_min(t_heap *h);
-int			heap_empty(t_heap *h);
-int			heap_less(t_hnode *x, t_hnode *y);
-void		heap_swap(t_hnode *x, t_hnode *y);
+int			priority_heap_init(t_heap *heap, int capacity);
+void		priority_heap_free(t_heap *heap);
+void		priority_heap_push(t_heap *heap, long long primary_priority,
+				long long secondary_priority, int coder_index);
+t_hnode		priority_heap_extract_min(t_heap *heap);
+int			priority_heap_is_empty(t_heap *heap);
+int			request_has_higher_priority(t_hnode *left, t_hnode *right);
+void		swap_heap_nodes(t_hnode *left, t_hnode *right);
+void		sift_priority_heap_down(t_heap *heap);
 
-int			acquire_dongles(t_env *env, int id);
-void		release_dongles(t_env *env, int id);
+int			request_dongle_pair(t_env *env, int coder_index);
+void		release_dongle_pair(t_env *env, int coder_index);
 
-void		*coder_routine(void *arg);
+void		*run_coder_thread(void *arg);
 
-void		*monitor_routine(void *arg);
+void		*run_burnout_monitor(void *arg);
 
-int			parse_args(int argc, char **argv, t_env *env);
-int			env_init(t_env *env);
-void		env_destroy(t_env *env);
+int			parse_simulation_arguments(int argc, char **argv, t_env *env);
+int			initialize_simulation_environment(t_env *env);
+void		destroy_simulation_environment(t_env *env);
 
 #endif

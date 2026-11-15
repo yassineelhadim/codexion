@@ -12,67 +12,50 @@
 
 #include "codexion.h"
 
-int	heap_init(t_heap *h, int cap)
+int	priority_heap_init(t_heap *h, int cap)
 {
-	h->a = malloc(sizeof(t_hnode) * cap);
-	h->n = 0;
-	h->cap = cap;
-	return (h->a == NULL);
+	h->nodes = malloc(sizeof(t_hnode) * cap);
+	h->count = 0;
+	h->capacity = cap;
+	return (h->nodes == NULL);
 }
 
-void	heap_free(t_heap *h)
+void	priority_heap_free(t_heap *h)
 {
-	free(h->a);
+	free(h->nodes);
 }
 
-void	heap_push(t_heap *h, long long k1, long long k2, int id)
+void	priority_heap_push(t_heap *h, long long primary_priority,
+		long long secondary_priority, int id)
 {
 	int	i;
 	int	p;
 
-	i = h->n++;
-	h->a[i].k1 = k1;
-	h->a[i].k2 = k2;
-	h->a[i].id = id;
+	i = h->count++;
+	h->nodes[i].primary_priority = primary_priority;
+	h->nodes[i].secondary_priority = secondary_priority;
+	h->nodes[i].coder_index = id;
 	while (i > 0)
 	{
 		p = (i - 1) / 2;
-		if (!heap_less(&h->a[i], &h->a[p]))
+		if (!request_has_higher_priority(&h->nodes[i], &h->nodes[p]))
 			break ;
-		heap_swap(&h->a[i], &h->a[p]);
+		swap_heap_nodes(&h->nodes[i], &h->nodes[p]);
 		i = p;
 	}
 }
 
-t_hnode	heap_extract_min(t_heap *h)
+t_hnode	priority_heap_extract_min(t_heap *h)
 {
 	t_hnode	top;
-	int		i;
-	int		l;
-	int		r;
-	int		m;
 
-	top = h->a[0];
-	h->a[0] = h->a[--h->n];
-	i = 0;
-	while (1)
-	{
-		l = 2 * i + 1;
-		r = 2 * i + 2;
-		m = i;
-		if (l < h->n && heap_less(&h->a[l], &h->a[m]))
-			m = l;
-		if (r < h->n && heap_less(&h->a[r], &h->a[m]))
-			m = r;
-		if (m == i)
-			break ;
-		heap_swap(&h->a[i], &h->a[m]);
-		i = m;
-	}
+	top = h->nodes[0];
+	h->nodes[0] = h->nodes[--h->count];
+	sift_priority_heap_down(h);
 	return (top);
 }
 
-int	heap_empty(t_heap *h)
+int	priority_heap_is_empty(t_heap *h)
 {
-	return (h->n == 0);
+	return (h->count == 0);
 }
